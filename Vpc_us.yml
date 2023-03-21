@@ -1,0 +1,260 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+#Description: 
+
+
+#Metadata:
+ 
+
+Parameters:
+  VpcCIDR: 
+    #Default- Values that adheres to a certainb constraint 
+    Default: 10.0.0.0/16
+    #Description- Just a description 
+    Description: Please enter the Ip range (CIDR notation) for this vpc
+    #Type- The data type of current specified parameter 
+    Type: String
+
+  
+  PublicSubnet1CIDR: 
+    #Default- Values that adheres to a certainb constraint 
+    Default: 10.0.0.0/24
+    #Description- Just a description 
+    Description: Please enter the Ip range (CIDR notation) for Public Subnet 1
+    #Type- The data type of current specified parameter 
+    Type: String
+
+  PublicSubnet2CIDR: 
+    #Default- Values that adheres to a certainb constraint 
+    Default: 10.0.1.0/24
+    #Description- Just a description 
+    Description: Please enter the Ip range (CIDR notation) for Public Subnet 2
+    #Type- The data type of current specified parameter 
+    Type: String
+
+  PrivateSubnet1CIDR: 
+    #Default- Values that adheres to a certainb constraint 
+    Default: 10.0.2.0/24
+    #Description- Just a description 
+    Description: Please enter the Ip range (CIDR notation) for Private Subnet 1
+    #Type- The data type of current specified parameter 
+    Type: String  
+    
+  PrivateSubnet2CIDR: 
+    #Default- Values that adheres to a certainb constraint 
+    Default: 10.0.3.0/24
+    #Description- Just a description 
+    Description: Please enter the Ip range (CIDR notation) for Private Subnet 2
+    #Type- The data type of current specified parameter 
+    Type: String
+
+  #predefined Availability zones for easy reference
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1a
+    Description: Select the Availability Zone to deploy resources to for AZ1.
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+    
+  AvailabilityZone2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1b
+    Description: Select the Availability Zone to deploy resources to for AZ2.
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+
+Resources:
+  #Create VPC
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VpcCIDR 
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: HaqimVPC
+
+  #Create IGW
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: IGW
+
+  #Attach IGW to VPC 
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: myInternetGateway
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId: 
+        Ref: myInternetGateway
+    
+  #Create Private and Public subnets      
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PublicSubnet1CIDR
+      AvailabilityZone: 
+        Ref: AvailabilityZone
+      Tags:
+      - Key: Name
+        Value: PublicSubnet1
+        
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PublicSubnet2CIDR
+      AvailabilityZone: 
+        Ref: AvailabilityZone2
+      Tags:
+      - Key: Name
+        Value: PublicSubnet2
+        
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PrivateSubnet1CIDR
+      AvailabilityZone: 
+        Ref: AvailabilityZone
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      CidrBlock: 
+        Ref: PrivateSubnet2CIDR
+      AvailabilityZone: 
+        Ref: AvailabilityZone2
+      Tags:
+      - Key: Name
+        Value: PrivateSubnet2
+
+  #Create Route table 
+
+  #Public route table connected to IGW
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: PublicRouteTable
+  
+  #Creating route for public routetable 
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: myInternetGateway
+
+  #Public Route table association 
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet1
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PublicSubnet2
+      RouteTableId:
+        Ref: PublicRouteTable
+
+  #Create Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: Name
+        Value: PrivateRouteTable
+
+  #Create Private Route
+  # PrivateRoute:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId:
+  #       Ref: PrivateRouteTable
+  #     DestinationCidrBlock: 
+  #       Ref: 0.0.0.0/0
+  #     NatGateway:
+  #       Ref: NatGateway
+  
+  #Private Route Table Association 
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet1
+      RouteTableId:
+        Ref: PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnet2
+      RouteTableId:
+        Ref: PrivateRouteTable
+
+
+  #Create NatGateway
+  NATGateway:
+    DependsOn: NATGatewayEIP
+    Type: AWS::EC2::NatGateway
+    Properties:
+        AllocationId: !GetAtt NATGatewayEIP.AllocationId
+        SubnetId:
+          Ref: PublicSubnet1
+        Tags:
+        - Key: Name
+          Value: NatGateway   
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+        Domain: vpc
+  RouteNATGateway:
+    DependsOn: NATGateway
+    Type: AWS::EC2::Route
+    Properties:
+        RouteTableId: 
+          Ref: PrivateRouteTable
+        DestinationCidrBlock: '0.0.0.0/0'
+        NatGatewayId:
+          Ref: NATGateway
+
+    
+
+  
+
+#Outputs:
